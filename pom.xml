@@ -5,8 +5,18 @@
     <groupId>com.lian</groupId>
     <artifactId>lianoj-backend-microservice</artifactId>
     <version>0.0.1-SNAPSHOT</version>
+    <packaging>pom</packaging>
     <name>lianoj-backend-microservice</name>
     <description>雪豹 OJ 项目</description>
+    <modules>
+        <module>lianoj-backend-common</module>
+        <module>lianoj-backend-model</module>
+        <module>lianoj-backend-gateway</module>
+        <module>lianoj-backend-service-client</module>
+        <module>lianoj-backend-question-service</module>
+        <module>lianoj-backend-user-service</module>
+        <module>lianoj-backend-judge-service</module>
+    </modules>
     <properties>
         <java.version>1.8</java.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
