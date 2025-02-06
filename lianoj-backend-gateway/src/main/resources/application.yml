@@ -3,3 +3,23 @@ spring:
     nacos:
       discovery:
         server-addr: 127.0.0.1:8848
+    gateway:
+      routes:
+        - id: lianoj-backend-user-service
+          uri: lb://lianoj-backend-user-service
+          predicates:
+            - Path=/api/user/**
+        - id: lianoj-backend-question-service
+          uri: lb://lianoj-backend-question-service
+          predicates:
+            - Path=/api/question/**
+        - id: lianoj-backend-judge-service
+          uri: lb://lianoj-backend-judge-service
+          predicates:
+            - Path=/api/judge/**
+  application:
+    name: lianoj-backend-gateway
+  main:
+    web-application-type: reactive
+server:
+  port: 8101
