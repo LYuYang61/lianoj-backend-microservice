@@ -1,6 +1,6 @@
 spring:
   application:
-    name: lian-oj-backend
+    name: lianoj-backend-judge-service
   # 默认 dev 环境
   profiles:
     active: dev
@@ -50,6 +50,7 @@ server:
     session:
       cookie:
         max-age: 2592000
+        path: /api
 mybatis-plus:
   configuration:
     map-underscore-to-camel-case: false
