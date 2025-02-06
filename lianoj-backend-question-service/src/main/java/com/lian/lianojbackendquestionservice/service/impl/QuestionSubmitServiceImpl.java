@@ -18,8 +18,8 @@ import com.lian.lianojbackendmodel.model.vo.enums.QuestionSubmitStatusEnum;
 import com.lian.lianojbackendquestionservice.mapper.QuestionSubmitMapper;
 import com.lian.lianojbackendquestionservice.service.QuestionService;
 import com.lian.lianojbackendquestionservice.service.QuestionSubmitService;
-import com.lian.lianojbackendserviceclient.service.JudgeService;
-import com.lian.lianojbackendserviceclient.service.UserService;
+import com.lian.lianojbackendserviceclient.service.JudgeFeignClient;
+import com.lian.lianojbackendserviceclient.service.UserFeignClient;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.ObjectUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -45,11 +45,11 @@ public class QuestionSubmitServiceImpl extends ServiceImpl<QuestionSubmitMapper,
     private QuestionService questionService;
 
     @Resource
-    private UserService userService;
+    private UserFeignClient userFeignClient;
 
     @Resource
     @Lazy // 懒加载，解决循环依赖问题
-    private JudgeService judgeService;
+    private JudgeFeignClient judgeFeignClient;
 
     /**
      * 提交题目
@@ -91,7 +91,7 @@ public class QuestionSubmitServiceImpl extends ServiceImpl<QuestionSubmitMapper,
         // 执行判题服务
         CompletableFuture.runAsync(() -> { // 异步执行
             try {
-                judgeService.doJudge(questionSubmitId);
+                judgeFeignClient.doJudge(questionSubmitId);
             } catch (Exception e) {
                 throw new BusinessException(ErrorCode.SYSTEM_ERROR, "判题服务异常");
             }
@@ -142,7 +142,7 @@ public class QuestionSubmitServiceImpl extends ServiceImpl<QuestionSubmitMapper,
         // 脱敏：仅本人和管理员能看见自己（提交 userId 和登录用户 id 不同）提交的代码
         long userId = loginUser.getId();
         // 处理脱敏
-        if(!Objects.equals(userId, questionSubmit.getUserId()) &&!userService.isAdmin(loginUser)){
+        if(!Objects.equals(userId, questionSubmit.getUserId()) &&!userFeignClient.isAdmin(loginUser)){
             questionSubmitVO.setCode(null);
         }
         return questionSubmitVO;

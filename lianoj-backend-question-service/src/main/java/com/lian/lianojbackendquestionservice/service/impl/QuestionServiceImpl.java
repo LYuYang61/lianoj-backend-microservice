@@ -17,7 +17,7 @@ import com.lian.lianojbackendmodel.model.vo.QuestionVO;
 import com.lian.lianojbackendmodel.model.vo.UserVO;
 import com.lian.lianojbackendquestionservice.mapper.QuestionMapper;
 import com.lian.lianojbackendquestionservice.service.QuestionService;
-import com.lian.lianojbackendserviceclient.service.UserService;
+import com.lian.lianojbackendserviceclient.service.UserFeignClient;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.ObjectUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -40,7 +40,7 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question>
         implements QuestionService {
 
     @Resource
-    private UserService userService;
+    private UserFeignClient userFeignClient;
 
     /**
      * 校验题目是否合法
@@ -134,9 +134,9 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question>
         Long userId = question.getUserId();  // 题目创建者id
         User user = null;
         if (userId != null && userId > 0) {
-            user = userService.getById(userId);
+            user = userFeignClient.getById(userId);
         }
-        UserVO userVO = userService.getUserVO(user);  // 题目创建者信息
+        UserVO userVO = userFeignClient.getUserVO(user);  // 题目创建者信息
         questionVO.setUserVO(userVO);
         return questionVO;
     }
@@ -156,7 +156,7 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question>
             return questionVOPage;
         }
         Set<Long> userIdSet = questionList.stream().map(Question::getUserId).collect(Collectors.toSet());  // 题目创建者id集合
-        Map<Long, List<User>> userIdUserListMap = userService.listByIds(userIdSet).stream()
+        Map<Long, List<User>> userIdUserListMap = userFeignClient.listByIds(userIdSet).stream()
                 .collect(Collectors.groupingBy(User::getId));  // K:创建者id V:创建者信息
 
         // 遍历题目列表，获取题目VO
@@ -167,7 +167,7 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question>
             if (userIdUserListMap.containsKey(userId)) {
                 user = userIdUserListMap.get(userId).get(0);
             }
-            UserVO userVO = userService.getUserVO(user);
+            UserVO userVO = userFeignClient.getUserVO(user);
             questionVO.setUserVO(userVO);
             return questionVO;
         }).collect(Collectors.toList());
