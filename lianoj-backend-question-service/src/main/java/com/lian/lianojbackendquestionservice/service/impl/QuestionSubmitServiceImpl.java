@@ -16,6 +16,7 @@ import com.lian.lianojbackendmodel.model.vo.QuestionSubmitVO;
 import com.lian.lianojbackendmodel.model.vo.enums.QuestionSubmitLanguageEnum;
 import com.lian.lianojbackendmodel.model.vo.enums.QuestionSubmitStatusEnum;
 import com.lian.lianojbackendquestionservice.mapper.QuestionSubmitMapper;
+import com.lian.lianojbackendquestionservice.rabbitmq.MyMessageProducer;
 import com.lian.lianojbackendquestionservice.service.QuestionService;
 import com.lian.lianojbackendquestionservice.service.QuestionSubmitService;
 import com.lian.lianojbackendserviceclient.service.JudgeFeignClient;
@@ -50,6 +51,9 @@ public class QuestionSubmitServiceImpl extends ServiceImpl<QuestionSubmitMapper,
     @Resource
     @Lazy // 懒加载，解决循环依赖问题
     private JudgeFeignClient judgeFeignClient;
+
+    @Resource
+    private MyMessageProducer myMessageProducer;
 
     /**
      * 提交题目
@@ -88,14 +92,16 @@ public class QuestionSubmitServiceImpl extends ServiceImpl<QuestionSubmitMapper,
             throw new BusinessException(ErrorCode.SYSTEM_ERROR, "数据插入失败");
         }
         Long questionSubmitId = questionSubmit.getId();
+        // 发送消息
+        myMessageProducer.sendMessage("code_exchange", "my_routingKey", String.valueOf(questionSubmitId));
         // 执行判题服务
-        CompletableFuture.runAsync(() -> { // 异步执行
-            try {
-                judgeFeignClient.doJudge(questionSubmitId);
-            } catch (Exception e) {
-                throw new BusinessException(ErrorCode.SYSTEM_ERROR, "判题服务异常");
-            }
-        });
+//        CompletableFuture.runAsync(() -> { // 异步执行
+//            try {
+//                judgeFeignClient.doJudge(questionSubmitId);
+//            } catch (Exception e) {
+//                throw new BusinessException(ErrorCode.SYSTEM_ERROR, "判题服务异常");
+//            }
+//        });
         return questionSubmitId;
     }
 
