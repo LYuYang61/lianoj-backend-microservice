@@ -17,4 +17,13 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
 
+    <dependencies>
+        <!-- AOP 支持：限流切面（RateLimitAspect）等依赖；
+             版本由父 pom 的 spring-boot-dependencies 统一管理，并随 common 传递给各业务服务 -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-aop</artifactId>
+        </dependency>
+    </dependencies>
+
 </project>

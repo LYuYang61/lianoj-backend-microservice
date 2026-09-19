@@ -207,8 +207,15 @@ public class UserController {
      */
     @GetMapping("/get/vo")
     public BaseResponse<UserVO> getUserVOById(long id, HttpServletRequest request) {
-        BaseResponse<User> response = getUserById(id, request);
-        User user = response.getData();
+        if (id <= 0) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR);
+        }
+        // 安全修复：本方法原来通过 this.getUserById(...) 自调用复用 /get 的管理员校验，
+        // 但自调用不经过 AOP 代理，@AuthCheck 切面被绕过（任意登录用户可枚举他人信息）。
+        // 这里显式校验管理员，不再依赖跨方法的注解校验。
+        ThrowUtils.throwIf(!userService.isAdmin(request), ErrorCode.NO_AUTH_ERROR);
+        User user = userService.getById(id);
+        ThrowUtils.throwIf(user == null, ErrorCode.NOT_FOUND_ERROR);
         return ResultUtils.success(userService.getUserVO(user));
     }
 

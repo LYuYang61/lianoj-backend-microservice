@@ -29,11 +29,13 @@ public class MyMessageConsumer {
     @RabbitListener(queues = {"code_queue"}, ackMode = "MANUAL")
     public void receiveMessage(String message, Channel channel, @Header(AmqpHeaders.DELIVERY_TAG) long deliveryTag) {
         log.info("receiveMessage message = {}", message);
-        long questionSubmitId = Long.parseLong(message);
         try {
+            // 消息体必须是数字提交id；解析也纳入 try——非法报文走 nack 丢弃而非无限重投
+            long questionSubmitId = Long.parseLong(message);
             judgeService.doJudge(questionSubmitId);
             channel.basicAck(deliveryTag, false);
         } catch (Exception e) {
+            log.error("判题消息处理失败, message={}", message, e);
             channel.basicNack(deliveryTag, false, false);
         }
     }

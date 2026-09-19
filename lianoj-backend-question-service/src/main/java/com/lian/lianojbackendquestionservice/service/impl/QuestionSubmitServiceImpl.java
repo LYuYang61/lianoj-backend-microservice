@@ -1,6 +1,7 @@
 package com.lian.lianojbackendquestionservice.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.lian.lianojbackendcommon.common.ErrorCode;
@@ -92,6 +93,8 @@ public class QuestionSubmitServiceImpl extends ServiceImpl<QuestionSubmitMapper,
             throw new BusinessException(ErrorCode.SYSTEM_ERROR, "数据插入失败");
         }
         Long questionSubmitId = questionSubmit.getId();
+        // 提交数原子自增（凡是有效提交都计数，与判题结果无关；见 QuestionServiceImpl.increaseSubmitNum）
+        questionService.increaseSubmitNum(questionId);
         // 发送消息
         myMessageProducer.sendMessage("code_exchange", "my_routingKey", String.valueOf(questionSubmitId));
         // 执行判题服务
@@ -174,6 +177,22 @@ public class QuestionSubmitServiceImpl extends ServiceImpl<QuestionSubmitMapper,
                 .collect(Collectors.toList());
         questionSubmitVOPage.setRecords(questionSubmitVOList);
         return questionSubmitVOPage;
+    }
+
+    /**
+     * 抢占判题权（幂等核心）
+     * 条件更新：仅当 status 仍为"等待中"时置为"判题中"。
+     * MyBatis-Plus 的 update 返回值基于影响行数（retBool），
+     * 影响行数为 0 即说明状态已被修改（重复消息 / 已判完），返回 false。
+     * 并发场景下该条件更新由 MySQL 行锁保证只有一个调用方成功。
+     */
+    @Override
+    public boolean grabJudgeStatus(long questionSubmitId) {
+        UpdateWrapper<QuestionSubmit> updateWrapper = new UpdateWrapper<>();
+        updateWrapper.eq("id", questionSubmitId);
+        updateWrapper.eq("status", QuestionSubmitStatusEnum.WAITING.getValue());
+        updateWrapper.set("status", QuestionSubmitStatusEnum.RUNNING.getValue());
+        return this.update(updateWrapper);
     }
 }
 

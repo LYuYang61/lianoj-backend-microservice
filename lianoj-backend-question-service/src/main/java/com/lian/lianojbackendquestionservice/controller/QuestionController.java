@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.google.gson.Gson;
 
 import com.lian.lianojbackendcommon.annotation.AuthCheck;
+import com.lian.lianojbackendcommon.annotation.RateLimit;
 import com.lian.lianojbackendcommon.common.BaseResponse;
 import com.lian.lianojbackendcommon.common.DeleteRequest;
 import com.lian.lianojbackendcommon.common.ErrorCode;
@@ -11,6 +12,7 @@ import com.lian.lianojbackendcommon.common.ResultUtils;
 import com.lian.lianojbackendcommon.constant.UserConstant;
 import com.lian.lianojbackendcommon.exception.BusinessException;
 import com.lian.lianojbackendcommon.exception.ThrowUtils;
+import com.lian.lianojbackendcommon.utils.RateLimiter;
 import com.lian.lianojbackendmodel.model.dto.question.*;
 import com.lian.lianojbackendmodel.model.dto.questionsubmit.QuestionSubmitAddRequest;
 import com.lian.lianojbackendmodel.model.dto.questionsubmit.QuestionSubmitQueryRequest;
@@ -48,6 +50,9 @@ public class QuestionController {
 
     @Resource
     private QuestionSubmitService questionSubmitService;
+
+    @Resource
+    private RateLimiter rateLimiter;
 
     private final static Gson GSON = new Gson();
 
@@ -192,6 +197,28 @@ public class QuestionController {
     }
 
     /**
+     * 获取题目标准答案（仅管理员，E04）
+     * <p>设计说明：答案不随题目 VO 下发（微服务版 QuestionVO 本就不含 answer 字段，
+     * 从源头避免"忘记裁剪导致泄漏"的风险），需要时由管理员单独请求本接口；
+     * 接口权限由 {@code @AuthCheck} 切面校验（P0 已补全该切面使其真正生效）。
+     *
+     * @param id 题目 id
+     * @return 标准答案（Markdown 文本），无答案时为 null
+     */
+    @GetMapping("/get/answer")
+    @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
+    public BaseResponse<String> getQuestionAnswerById(long id, HttpServletRequest request) {
+        if (id <= 0) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR);
+        }
+        Question question = questionService.getById(id);
+        if (question == null) {
+            throw new BusinessException(ErrorCode.NOT_FOUND_ERROR);
+        }
+        return ResultUtils.success(question.getAnswer());
+    }
+
+    /**
      * 分页获取列表（封装类）
      *
      * @param questionQueryRequest
@@ -290,11 +317,17 @@ public class QuestionController {
 
     /**
      * 提交题目
+     * <p>双层限流（E05）：
+     * ① 方法级 @RateLimit —— 全局总量闸门（每分钟最多 50 次提交），防止单点突发打满沙箱；
+     * ② 方法内编程式 RateLimiter —— 单用户维度（每用户每分钟最多 5 次），
+     * 维度键依赖登录用户 id（方法内才可解析），故不用注解而用编程式调用。
      *
      * @param questionSubmitAddRequest
      * @param request
      * @return 提交记录的 id
      */
+    @RateLimit(key = "'question_submit:global'", window = 60, maxCount = 50,
+            message = "当前提交人数过多，请稍后再试")
     @PostMapping("/question_submit/do")
     public BaseResponse<Long> doQuestionSubmit(@RequestBody QuestionSubmitAddRequest questionSubmitAddRequest, HttpServletRequest request) {
         if (questionSubmitAddRequest == null || questionSubmitAddRequest.getQuestionId() <= 0) {
@@ -302,6 +335,9 @@ public class QuestionController {
         }
 
         final User loginUser = userFeignClient.getLoginUser(request);
+        // 单用户维度限流：判题是重资源操作（编译 + 多进程执行），限制刷提交行为
+        boolean allowed = rateLimiter.tryConsume("question_submit:user:" + loginUser.getId(), 60, 5);
+        ThrowUtils.throwIf(!allowed, ErrorCode.TOO_MANY_REQUEST, "提交过于频繁，请稍后再试");
         long questionSubmitId = questionSubmitService.doQuestionSubmit(questionSubmitAddRequest, loginUser);
         return ResultUtils.success(questionSubmitId);
     }

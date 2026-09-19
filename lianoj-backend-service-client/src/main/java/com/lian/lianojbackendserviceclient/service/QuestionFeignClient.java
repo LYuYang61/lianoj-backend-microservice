@@ -41,4 +41,27 @@ public interface QuestionFeignClient{
     @PostMapping("/question_submit/update")
     boolean updateQuestionSubmitById(@RequestBody QuestionSubmit questionSubmit);
 
+    /**
+     * 抢占判题权（幂等核心）：
+     * 条件更新 question_submit 的 status（仅当当前状态为"等待中"时置为"判题中"），
+     * 以数据库影响行数判定是否抢占成功——MQ 重复投递时，第二条消息必然抢占失败，
+     * 从源头防止同一提交被重复判题、重复计数。
+     *
+     * @param questionSubmitId 提交 id
+     * @return true = 抢占成功（本次调用负责判题）；false = 已被处理（重复消息）
+     */
+    @PostMapping("/question_submit/grab")
+    boolean grabJudgeStatus(@RequestParam("questionSubmitId") long questionSubmitId);
+
+    /**
+     * 题目通过数原子自增（acceptedNum = acceptedNum + 1）：
+     * 判定结果为 Accepted 时由判题服务调用，
+     * 原子性由 SQL 层（setSql 自增）保证，避免"读-改-写"并发丢失更新。
+     *
+     * @param questionId 题目 id
+     * @return
+     */
+    @PostMapping("/accepted/num/increase")
+    boolean increaseAcceptedNum(@RequestParam("questionId") long questionId);
+
 }

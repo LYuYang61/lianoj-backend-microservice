@@ -2,6 +2,7 @@ package com.lian.lianojbackendquestionservice.service.impl;
 
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
@@ -41,6 +42,31 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question>
 
     @Resource
     private UserFeignClient userFeignClient;
+
+    /**
+     * 提交数原子自增
+     * 使用 SQL 表达式 "submitNum = submitNum + 1" 在数据库层完成自增：
+     * 并发提交时由 MySQL 行锁保证不丢失更新，应用层无需加锁。
+     * 注意：题目表列名本身为驼峰（submitNum），未开启下划线转驼峰映射，故 setSql 直接写驼峰列名。
+     */
+    @Override
+    public boolean increaseSubmitNum(long questionId) {
+        UpdateWrapper<Question> updateWrapper = new UpdateWrapper<>();
+        updateWrapper.eq("id", questionId);
+        updateWrapper.setSql("submitNum = submitNum + 1");
+        return this.update(updateWrapper);
+    }
+
+    /**
+     * 通过数原子自增（判定结果为 Accepted 时调用）
+     */
+    @Override
+    public boolean increaseAcceptedNum(long questionId) {
+        UpdateWrapper<Question> updateWrapper = new UpdateWrapper<>();
+        updateWrapper.eq("id", questionId);
+        updateWrapper.setSql("acceptedNum = acceptedNum + 1");
+        return this.update(updateWrapper);
+    }
 
     /**
      * 校验题目是否合法

@@ -42,4 +42,16 @@ public class QuestionInnerController implements QuestionFeignClient {
     public boolean updateQuestionSubmitById(@RequestBody QuestionSubmit questionSubmit) {
         return questionSubmitService.updateById(questionSubmit);
     }
+
+    @PostMapping("/question_submit/grab")
+    @Override
+    public boolean grabJudgeStatus(@RequestParam("questionSubmitId") long questionSubmitId) {
+        return questionSubmitService.grabJudgeStatus(questionSubmitId);
+    }
+
+    @PostMapping("/accepted/num/increase")
+    @Override
+    public boolean increaseAcceptedNum(@RequestParam("questionId") long questionId) {
+        return questionService.increaseAcceptedNum(questionId);
+    }
 }

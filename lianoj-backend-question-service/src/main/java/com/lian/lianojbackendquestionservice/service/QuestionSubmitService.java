@@ -51,4 +51,14 @@ public interface QuestionSubmitService extends IService<QuestionSubmit> {
      */
     Page<QuestionSubmitVO> getQuestionSubmitVOPage(Page<QuestionSubmit> questionSubmitPage, User loginUser);
 
+    /**
+     * 抢占判题权（幂等核心）：
+     * 仅当提交状态为"等待中"时才将其置为"判题中"，以影响行数判定结果。
+     * 用于判题服务消费 MQ 消息时的防重——重复投递的消息只有第一次能抢占成功。
+     *
+     * @param questionSubmitId 提交 id
+     * @return true = 抢占成功，调用方负责完成判题；false = 已被处理，应直接丢弃消息
+     */
+    boolean grabJudgeStatus(long questionSubmitId);
+
 }

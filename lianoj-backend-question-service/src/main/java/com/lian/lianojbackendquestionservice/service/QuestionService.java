@@ -51,5 +51,23 @@ public interface QuestionService extends IService<Question> {
      */
     Page<QuestionVO> getQuestionVOPage(Page<Question> questionPage, HttpServletRequest request);
 
+    /**
+     * 提交数原子自增（submitNum = submitNum + 1）
+     * 用户提交题目落库成功后调用，与判题结果无关（凡是有效提交都计数）
+     *
+     * @param questionId 题目 id
+     * @return 是否更新成功
+     */
+    boolean increaseSubmitNum(long questionId);
+
+    /**
+     * 通过数原子自增（acceptedNum = acceptedNum + 1）
+     * 判题结果为 Accepted 时由判题服务经 Feign 调用
+     *
+     * @param questionId 题目 id
+     * @return 是否更新成功
+     */
+    boolean increaseAcceptedNum(long questionId);
+
 
 }

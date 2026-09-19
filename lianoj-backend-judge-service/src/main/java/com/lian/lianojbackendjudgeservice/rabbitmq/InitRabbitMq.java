@@ -17,6 +17,9 @@ public class InitRabbitMq {
         try {
             ConnectionFactory factory = new ConnectionFactory();
             factory.setHost("localhost");   // 设置主机
+            // 与 compose.yml 中创建的用户一致；不能用 guest，RabbitMQ 限制 guest 仅本机连接
+            factory.setUsername("lian");
+            factory.setPassword("123456");
             Connection connection = factory.newConnection();
             Channel channel = connection.createChannel();   // 创建通道
             String EXCHANGE_NAME = "code_exchange";
