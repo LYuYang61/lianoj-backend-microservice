@@ -29,6 +29,7 @@ import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.Resource;
+import java.util.Date;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
@@ -193,6 +194,67 @@ public class QuestionSubmitServiceImpl extends ServiceImpl<QuestionSubmitMapper,
         updateWrapper.eq("status", QuestionSubmitStatusEnum.WAITING.getValue());
         updateWrapper.set("status", QuestionSubmitStatusEnum.RUNNING.getValue());
         return this.update(updateWrapper);
+    }
+
+    /**
+     * 僵尸判题重置（E07）：
+     * 条件 = status 仍为"判题中" 且 updateTime 早于 (now - beforeMinutes)。
+     * 双重条件保证：并发扫描只有一个任务能重置成功（影响行数判定）；
+     * 正在被重新抢占的提交会因 updateTime 刷新而自动退出本方法的可重置范围。
+     */
+    @Override
+    public boolean resetZombieJudge(long questionSubmitId, int beforeMinutes) {
+        Date before = new Date(System.currentTimeMillis() - beforeMinutes * 60_000L);
+        UpdateWrapper<QuestionSubmit> updateWrapper = new UpdateWrapper<>();
+        updateWrapper.eq("id", questionSubmitId);
+        updateWrapper.eq("status", QuestionSubmitStatusEnum.RUNNING.getValue());
+        updateWrapper.lt("updateTime", before);
+        updateWrapper.set("status", QuestionSubmitStatusEnum.WAITING.getValue());
+        return this.update(updateWrapper);
+    }
+
+    /**
+     * 已完成提交重置为"等待中"（E07 管理端重判）：
+     * 条件 = status ∈ {成功, 失败}；"判题中"的提交必须走僵尸恢复通道，避免双重判题。
+     */
+    @Override
+    public boolean resetFinishedJudgeToWaiting(long questionSubmitId) {
+        UpdateWrapper<QuestionSubmit> updateWrapper = new UpdateWrapper<>();
+        updateWrapper.eq("id", questionSubmitId);
+        updateWrapper.in("status", QuestionSubmitStatusEnum.SUCCEED.getValue(),
+                QuestionSubmitStatusEnum.FAILED.getValue());
+        updateWrapper.set("status", QuestionSubmitStatusEnum.WAITING.getValue());
+        return this.update(updateWrapper);
+    }
+
+    /**
+     * 僵尸判题列表（E07）：条件过滤在 SQL 层完成
+     */
+    @Override
+    public java.util.List<Long> listZombieQuestionSubmitIds(int beforeMinutes) {
+        Date before = new Date(System.currentTimeMillis() - beforeMinutes * 60_000L);
+        QueryWrapper<QuestionSubmit> queryWrapper = new QueryWrapper<>();
+        queryWrapper.eq("status", QuestionSubmitStatusEnum.RUNNING.getValue());
+        queryWrapper.lt("updateTime", before);
+        queryWrapper.select("id");
+        return this.list(queryWrapper).stream()
+                .map(QuestionSubmit::getId)
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * "等待中"悬挂列表（E07 补强）：status=等待中 且 updateTime 超时
+     */
+    @Override
+    public java.util.List<Long> listWaitingJudgeIds(int beforeMinutes) {
+        Date before = new Date(System.currentTimeMillis() - beforeMinutes * 60_000L);
+        QueryWrapper<QuestionSubmit> queryWrapper = new QueryWrapper<>();
+        queryWrapper.eq("status", QuestionSubmitStatusEnum.WAITING.getValue());
+        queryWrapper.lt("updateTime", before);
+        queryWrapper.select("id");
+        return this.list(queryWrapper).stream()
+                .map(QuestionSubmit::getId)
+                .collect(Collectors.toList());
     }
 }
 

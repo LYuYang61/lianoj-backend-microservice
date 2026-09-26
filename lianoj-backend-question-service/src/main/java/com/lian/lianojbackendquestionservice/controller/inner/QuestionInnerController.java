@@ -54,4 +54,29 @@ public class QuestionInnerController implements QuestionFeignClient {
     public boolean increaseAcceptedNum(@RequestParam("questionId") long questionId) {
         return questionService.increaseAcceptedNum(questionId);
     }
+
+    @PostMapping("/question_submit/zombie/reset")
+    @Override
+    public boolean resetZombieJudge(@RequestParam("questionSubmitId") long questionSubmitId,
+                                    @RequestParam("beforeMinutes") int beforeMinutes) {
+        return questionSubmitService.resetZombieJudge(questionSubmitId, beforeMinutes);
+    }
+
+    @PostMapping("/question_submit/finished/reset")
+    @Override
+    public boolean resetFinishedJudgeToWaiting(@RequestParam("questionSubmitId") long questionSubmitId) {
+        return questionSubmitService.resetFinishedJudgeToWaiting(questionSubmitId);
+    }
+
+    @GetMapping("/question_submit/zombie/list")
+    @Override
+    public java.util.List<Long> listZombieQuestionSubmitIds(@RequestParam("beforeMinutes") int beforeMinutes) {
+        return questionSubmitService.listZombieQuestionSubmitIds(beforeMinutes);
+    }
+
+    @GetMapping("/question_submit/waiting/list")
+    @Override
+    public java.util.List<Long> listWaitingJudgeIds(@RequestParam("beforeMinutes") int beforeMinutes) {
+        return questionSubmitService.listWaitingJudgeIds(beforeMinutes);
+    }
 }

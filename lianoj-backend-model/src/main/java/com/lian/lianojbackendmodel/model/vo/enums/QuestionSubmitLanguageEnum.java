@@ -16,7 +16,10 @@ public enum QuestionSubmitLanguageEnum {
 
     JAVA("java", "java"),
     CPLUSPLUS("c++", "c++"),
+    PYTHON("python", "python"),
     GOLANG("golang", "golang");
+    // 说明：GOLANG 仅为教程枚举遗留，沙箱侧 LanguageConfigRegistry 未注册 go，
+    // 提交 golang 代码会在判题时报"沙箱暂不支持该语言"——前端语言下拉只提供 java/c++/python
 
     private final String text;
 

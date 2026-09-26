@@ -64,4 +64,47 @@ public interface QuestionFeignClient{
     @PostMapping("/accepted/num/increase")
     boolean increaseAcceptedNum(@RequestParam("questionId") long questionId);
 
+    /**
+     * 僵尸判题重置（E07）：
+     * 把"判题中(status=1)且超过 beforeMinutes 无进展"的提交条件重置为"等待中"。
+     * 双重条件（status + updateTime）保证：多实例定时任务并发扫描时只有一个能重置成功；
+     * 重置会刷新 updateTime，即使提交被快速重新抢占也不会被下一轮扫描误伤。
+     *
+     * @param questionSubmitId 提交 id
+     * @param beforeMinutes    判题中最长容忍时长（分钟）
+     */
+    @PostMapping("/question_submit/zombie/reset")
+    boolean resetZombieJudge(@RequestParam("questionSubmitId") long questionSubmitId,
+                             @RequestParam("beforeMinutes") int beforeMinutes);
+
+    /**
+     * 已完成提交重置为"等待中"（E07 管理端重判）：
+     * 仅允许 status ∈ {成功(2), 失败(3)} 的提交重置，判题中的提交不允许重复排队。
+     *
+     * @param questionSubmitId 提交 id
+     */
+    @PostMapping("/question_submit/finished/reset")
+    boolean resetFinishedJudgeToWaiting(@RequestParam("questionSubmitId") long questionSubmitId);
+
+    /**
+     * 查询僵尸判题的提交 id 列表（E07）：
+     * status = 判题中(1) 且 updateTime 早于 now - beforeMinutes 的提交。
+     * 条件过滤在 SQL 层完成，避免定时任务拉取全量提交。
+     *
+     * @param beforeMinutes 判题中最长容忍时长（分钟）
+     */
+    @GetMapping("/question_submit/zombie/list")
+    java.util.List<Long> listZombieQuestionSubmitIds(@RequestParam("beforeMinutes") int beforeMinutes);
+
+    /**
+     * 查询"等待中"悬挂的提交 id 列表（E07 补强）：
+     * status = 等待中(0) 且 updateTime 早于 now - beforeMinutes ——
+     * 典型成因是判题消息投递失败或消息丢失（提交已建队但永远等不到消费者）。
+     * 该状态的提交重新投递消息是幂等安全的（grabJudgeStatus 会正确处理已被处理的情形）。
+     *
+     * @param beforeMinutes 等待中的最长容忍时长（分钟）
+     */
+    @GetMapping("/question_submit/waiting/list")
+    java.util.List<Long> listWaitingJudgeIds(@RequestParam("beforeMinutes") int beforeMinutes);
+
 }

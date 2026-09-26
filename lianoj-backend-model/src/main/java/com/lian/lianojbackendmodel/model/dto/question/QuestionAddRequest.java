@@ -43,6 +43,12 @@ public class QuestionAddRequest implements Serializable {
      */
     private JudgeConfig judgeConfig;
 
+    /**
+     * SPJ 特殊判题校验程序（E10，可空）：
+     * 仅 judgeConfig.spjMode=special 时使用，Java 程序，协议见 Question.spjCode 注释
+     */
+    private String spjCode;
+
     private static final long serialVersionUID = 1L;
 
 }

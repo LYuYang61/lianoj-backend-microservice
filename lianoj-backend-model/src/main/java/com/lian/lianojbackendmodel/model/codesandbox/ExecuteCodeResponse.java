@@ -34,6 +34,16 @@ public class ExecuteCodeResponse {
      */
     public static final int STATUS_RUN_ERROR = 3;
 
+    /**
+     * 执行状态：编译失败（E09 语义细分，判题服务据此置为"编译错误"而非 Wrong Answer）
+     */
+    public static final int STATUS_COMPILE_ERROR = 4;
+
+    /**
+     * 执行状态：用户代码超出时限（E09 时限语义细分，判题服务据此判"超时"而非 Wrong Answer）
+     */
+    public static final int STATUS_TIME_LIMIT = 5;
+
     private List<String> outputList;
 
     /**

@@ -50,6 +50,7 @@ public class RemoteCodeSandbox implements CodeSandbox {
                 .header(HEADER_TIMESTAMP, String.valueOf(timestamp))  // 时间戳（防重放窗口）
                 .header(HEADER_SIGN, sign)                            // 请求签名（防伪造/防篡改）
                 .body(json)                                           // 设置请求体（与签名内容一致）
+                .timeout(60_000)                                      // P1 审查修复：显式超时，防沙箱挂起拖死消费线程
                 .execute()
                 .body();
         if (StringUtils.isBlank(responseStr)) {

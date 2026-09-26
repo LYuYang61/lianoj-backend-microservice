@@ -42,6 +42,15 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-amqp</artifactId>
         </dependency>
+        <!-- E08 分布式锁：Redisson 客户端（可重入锁/看门狗续期）。
+             不用 redisson-spring-boot-starter 的原因：其 spring-data 适配模块与
+             Spring Boot 2.6.13 存在版本矩阵耦合；本工程只需 RedissonClient 本体，
+             手写 SingleServer 配置类（RedissonConfig）依赖面最小。JDK8 兼容。 -->
+        <dependency>
+            <groupId>org.redisson</groupId>
+            <artifactId>redisson</artifactId>
+            <version>3.19.3</version>
+        </dependency>
 
         <dependency>
             <groupId>org.springframework.boot</groupId>

@@ -24,4 +24,11 @@ public class JudgeInfo {
      * 消耗时间（KB）
      */
     private Long time;
+
+    /**
+     * 得分（E10 赛制判题）：
+     * OI 赛制 = 通过用例的分值累加；ACM 赛制 = 全部通过时为总分，否则 0。
+     * 未配置用例分值（传统题目）时为 null，前端展示时降级为 Accepted/WA 文案。
+     */
+    private Long score;
 }

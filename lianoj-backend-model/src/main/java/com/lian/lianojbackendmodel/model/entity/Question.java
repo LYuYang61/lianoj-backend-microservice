@@ -63,6 +63,15 @@ public class Question implements Serializable {
     private String judgeConfig;
 
     /**
+     * SPJ 特殊判题校验程序代码（E10，可空）：
+     * 仅在 judgeConfig.spjMode=special 时使用；约定为 Java 程序，
+     * 从标准输入读取"测试输入 + #EXPECTED# + 期望输出 + #ACTUAL# + 用户输出"，
+     * 向标准输出写 1 表示通过、0 表示不通过。同样在沙箱中隔离执行（出题人代码也不可信）。
+     * 注意：该字段不出现在 QuestionVO 中，不随题目查询下发。
+     */
+    private String spjCode;
+
+    /**
      * 点赞数
      */
     private Integer thumbNum;
