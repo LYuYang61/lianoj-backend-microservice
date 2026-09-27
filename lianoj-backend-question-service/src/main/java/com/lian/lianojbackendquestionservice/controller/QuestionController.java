@@ -343,7 +343,37 @@ public class QuestionController {
     }
 
     /**
-     * 分页获取题目提交列表（除了管理员外，普通用户只能看到非答案、提交代码等公开信息）
+     * 根据 id 获取题目提交（本人或管理员，判题结果实时轮询专用）
+     * <p>背景：做题页提交后不再跳转到提交记录页，而是内嵌"提交结果"面板，
+     * 前端以约 1.5s 间隔轮询本接口跟踪 status，直到判定完成。
+     * 权限口径与列表页一致：仅本人或管理员可查看；
+     * 代码脱敏复用 {@code getQuestionSubmitVO}（非本人代码置 null）。
+     *
+     * @param questionSubmitId 提交记录 id
+     * @param request          携带登录态
+     * @return 单条提交 VO（status / judgeInfo，judgeInfo 含 E10 的 score）
+     */
+    @GetMapping("/question_submit/get")
+    public BaseResponse<QuestionSubmitVO> getQuestionSubmitVOById(long questionSubmitId, HttpServletRequest request) {
+        ThrowUtils.throwIf(questionSubmitId <= 0, ErrorCode.PARAMS_ERROR);
+        QuestionSubmit questionSubmit = questionSubmitService.getById(questionSubmitId);
+        ThrowUtils.throwIf(questionSubmit == null, ErrorCode.NOT_FOUND_ERROR, "提交不存在");
+        User loginUser = userFeignClient.getLoginUser(request);
+        boolean isOwner = questionSubmit.getUserId() != null
+                && questionSubmit.getUserId().equals(loginUser.getId());
+        ThrowUtils.throwIf(!isOwner && !userFeignClient.isAdmin(loginUser), ErrorCode.NO_AUTH_ERROR);
+        return ResultUtils.success(questionSubmitService.getQuestionSubmitVO(questionSubmit, loginUser));
+    }
+
+    /**
+     * 分页获取题目提交列表（除管理员外，普通用户仅能查看本人的提交记录）
+     * <p>权限口径（验收反馈收紧）：原实现返回全库提交记录（仅代码脱敏），
+     * 普通用户可浏览他人的提交情况——本接口现改为：
+     * <ul>
+     *   <li>普通用户：服务端强制 {@code userId = 本人}（覆盖请求中携带的任意 userId，防越权过滤）；</li>
+     *   <li>管理员：可查看全部记录，并可按 userId 过滤；</li>
+     *   <li>代码脱敏逻辑不变（getQuestionSubmitVO 仅本人/管理员可见代码，双保险）。</li>
+     * </ul>
      *
      * @param questionSubmitQueryRequest
      * @param request
@@ -351,11 +381,16 @@ public class QuestionController {
      */
     @PostMapping("/question_submit/list/page")
     public BaseResponse<Page<QuestionSubmitVO>> listQuestionSubmitByPage(@RequestBody QuestionSubmitQueryRequest questionSubmitQueryRequest, HttpServletRequest request) {
+        ThrowUtils.throwIf(questionSubmitQueryRequest == null, ErrorCode.PARAMS_ERROR);
+        final User loginUser = userFeignClient.getLoginUser(request);
+        // 权限收紧：普通用户强制只查本人的提交；管理员不过滤（可看全部）
+        if (!userFeignClient.isAdmin(loginUser)) {
+            questionSubmitQueryRequest.setUserId(loginUser.getId());
+        }
         long current = questionSubmitQueryRequest.getCurrent();
         long size = questionSubmitQueryRequest.getPageSize();
         // 从数据库中查询原始的题目提交分页信息
         Page<QuestionSubmit> questionSubmitPage = questionSubmitService.page(new Page<>(current, size), questionSubmitService.getQueryWrapper(questionSubmitQueryRequest));
-        final User loginUser = userFeignClient.getLoginUser(request);
         // 返回脱敏信息
         return ResultUtils.success(questionSubmitService.getQuestionSubmitVOPage(questionSubmitPage, loginUser));
     }
