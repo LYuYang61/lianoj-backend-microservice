@@ -118,10 +118,16 @@ public class DefaultJudgeStrategy implements JudgeStrategy {
         }
 
         // 资源限制判定（在比对之后：只有全部用例跑完，time/memory 统计才完整可信）；
-        // 限制字段缺失（null）时跳过对应判定，避免拆箱 NPE
+        // 限制字段缺失（null）时跳过对应判定，避免拆箱 NPE。
+        // 内存单位口径（R18 修订 R2）：judgeConfig.memoryLimit 单位是 **MB**（教程默认 1000
+        // 即 1000MB，与前端做题页"内存限制 1000 MB"的展示一致）；沙箱上报的
+        // judgeInfo.memory 单位是 KB（容器 memory_stats.usage/1024）——比较时先换算：
+        // memory(KB) > memoryLimit(MB) × 1024 才判 MLE。
+        // 若按"limit 直按 KB 解释"，默认值 1000=1MB 连 JVM 都装不下，
+        // Docker 模式下所有 Java 提交必然 MLE（真机验证结论，1596KB>1000 即触发）。
         Long needMemoryLimit = judgeConfig.getMemoryLimit();
         Long needTimeLimit = judgeConfig.getTimeLimit();
-        if (needMemoryLimit != null && memory > needMemoryLimit) {
+        if (needMemoryLimit != null && memory > needMemoryLimit * 1024) {
             return finish(judgeInfoResponse, JudgeInfoMessageEnum.MEMORY_LIMIT_EXCEEDED,
                     judgeConfig, judgeCaseList, totalScore, true);
         }
